@@ -390,6 +390,7 @@ private fun StandbyScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Black)
             .pointerInput(settings.enableAutoDim) {
                 if (settings.enableAutoDim) {
                     detectTapGestures {

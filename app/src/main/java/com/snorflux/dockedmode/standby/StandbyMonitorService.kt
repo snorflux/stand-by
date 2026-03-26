@@ -10,12 +10,16 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.hardware.SensorManager
+import android.view.OrientationEventListener
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.snorflux.dockedmode.R
 
 class StandbyMonitorService : Service() {
     private val handler = Handler(Looper.getMainLooper())
+    private var orientationListener: OrientationEventListener? = null
+    
     private val pollRunnable = object : Runnable {
         override fun run() {
             StandbyModeController.maybeLaunch(applicationContext)
@@ -23,7 +27,7 @@ class StandbyMonitorService : Service() {
             if (StandbyModeController.isCharging(applicationContext)) {
                 handler.postDelayed(this, CHECK_INTERVAL_MS)
             } else {
-                stopSelf()
+                stopSelf() // Automatically stop
             }
         }
     }
@@ -32,6 +36,17 @@ class StandbyMonitorService : Service() {
         super.onCreate()
         createChannelIfNeeded()
         startForeground(NOTIFICATION_ID, buildNotification())
+
+        orientationListener = object : OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+                val isLandscape = (orientation in 60..120) || (orientation in 240..300)
+                StandbyModeController.isPhysicallyLandscape = isLandscape
+            }
+        }
+        if (orientationListener?.canDetectOrientation() == true) {
+            orientationListener?.enable()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -49,6 +64,7 @@ class StandbyMonitorService : Service() {
 
     override fun onDestroy() {
         stopMonitoring()
+        orientationListener?.disable()
         super.onDestroy()
     }
 

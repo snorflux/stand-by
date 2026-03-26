@@ -1,11 +1,16 @@
 package com.snorflux.dockedmode
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -49,11 +54,13 @@ import kotlinx.coroutines.delay
 class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_FORCE_SETUP = "extra_force_setup"
+        private const val REQUEST_NOTIFICATIONS_PERMISSION = 1201
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        maybeRequestNotificationPermission()
         StandbyMonitorService.syncWithPowerState(this)
 
         val forceSetup = intent.getBooleanExtra(EXTRA_FORCE_SETUP, false)
@@ -67,6 +74,23 @@ class MainActivity : ComponentActivity() {
             DockedModeTheme {
                 SetupScreen()
             }
+        }
+    }
+
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!granted) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                REQUEST_NOTIFICATIONS_PERMISSION
+            )
         }
     }
 }
