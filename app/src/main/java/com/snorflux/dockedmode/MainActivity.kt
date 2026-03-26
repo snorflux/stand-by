@@ -111,13 +111,18 @@ private fun SetupScreen(modifier: Modifier = Modifier) {
     val darkTheme = isSystemInDarkTheme()
 
     val tileColors = remember(darkTheme) {
-        launcherTilePalette(darkTheme).shuffled().take(4)
+        launcherTilePalette(darkTheme).shuffled().take(5)
+    }
+
+    var fullScreenIntentEnabled by remember {
+        mutableStateOf(StandbyModeController.canUseFullScreenIntent(context))
     }
 
     LaunchedEffect(context) {
         while (true) {
             notificationsEnabled = StandbyModeController.isNotificationAccessEnabled(context)
             standbyReady = StandbyModeController.isReadyForManualLaunch(context)
+            fullScreenIntentEnabled = StandbyModeController.canUseFullScreenIntent(context)
             delay(1_500)
         }
     }
@@ -192,6 +197,22 @@ private fun SetupScreen(modifier: Modifier = Modifier) {
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                item {
+                    SetupActionTile(
+                        title = "Lockscreen Launch",
+                        subtitle = if (fullScreenIntentEnabled) "Allowed" else "Permission required to wake screen",
+                        buttonText = if (fullScreenIntentEnabled) "Manage" else "Allow",
+                        buttonEnabled = true,
+                        containerColor = tileColors[4],
+                        onClick = {
+                            StandbyModeController.openFullScreenIntentSettings(context)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             item {

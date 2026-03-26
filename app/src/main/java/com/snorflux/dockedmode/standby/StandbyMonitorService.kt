@@ -4,8 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -20,6 +22,14 @@ class StandbyMonitorService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var orientationListener: OrientationEventListener? = null
     
+    private val screenStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                StandbyModeController.maybeLaunch(applicationContext)
+            }
+        }
+    }
+
     private val pollRunnable = object : Runnable {
         override fun run() {
             StandbyModeController.maybeLaunch(applicationContext)
@@ -47,6 +57,12 @@ class StandbyMonitorService : Service() {
         if (orientationListener?.canDetectOrientation() == true) {
             orientationListener?.enable()
         }
+
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        ContextCompat.registerReceiver(this, screenStateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -65,6 +81,11 @@ class StandbyMonitorService : Service() {
     override fun onDestroy() {
         stopMonitoring()
         orientationListener?.disable()
+        try {
+            unregisterReceiver(screenStateReceiver)
+        } catch (e: Exception) {
+            // Ignore if not registered
+        }
         super.onDestroy()
     }
 

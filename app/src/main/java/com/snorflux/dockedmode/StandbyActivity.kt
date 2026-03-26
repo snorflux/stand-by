@@ -171,6 +171,7 @@ class StandbyActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        StandbyModeController.isStandbyActive = true
         registerModeReceiver()
         if (!StandbyModeController.isReadyForManualLaunch(this)) {
             finish()
@@ -178,6 +179,7 @@ class StandbyActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        StandbyModeController.isStandbyActive = false
         unregisterReceiver(modeReceiver)
         super.onStop()
     }

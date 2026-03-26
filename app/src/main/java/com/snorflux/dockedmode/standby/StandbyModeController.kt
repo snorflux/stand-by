@@ -1,5 +1,6 @@
 package com.snorflux.dockedmode.standby
 
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -7,6 +8,7 @@ import android.content.IntentFilter
 import android.content.res.Configuration
 import android.hardware.display.DisplayManager
 import android.os.BatteryManager
+import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
@@ -25,15 +27,11 @@ object StandbyModeController {
     @Volatile
     var isPhysicallyLandscape: Boolean = false
 
-    private fun isAppInForeground(context: Context): Boolean {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        return activityManager.runningAppProcesses?.any {
-            it.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND &&
-            it.processName == context.packageName
-        } == true
-    }
+    @Volatile
+    var isStandbyActive: Boolean = false
 
     fun maybeLaunch(context: Context) {
+        if (isStandbyActive) return
         if (!shouldLaunch(context)) return
 
         val now = SystemClock.elapsedRealtime()
@@ -45,24 +43,16 @@ object StandbyModeController {
         
         val isLocked = keyguardManager.isKeyguardLocked
         val isInteractive = powerManager.isInteractive
-        val inForeground = isAppInForeground(context)
 
-        // If the user is actively using the device (unlocked and screen on) outside of our app,
-        // we should not interrupt them or spam notifications. Standby is for when the device is idle/locked.
-        if (isInteractive && !isLocked && !inForeground) {
+        // If the user is actively using the device (unlocked and screen on),
+        // we should NEVER interrupt them or spam notifications, even if they are in our app.
+        // Standby is strictly for when the device is idle/locked.
+        if (isInteractive && !isLocked) {
             return
         }
 
-        // Android 10+ restricts background activity launches.
-        // If app is not in the foreground, or the device is locked/screen off,
-        // we must use a Full-Screen Intent notification to launch over the lockscreen.
-        if (inForeground && isInteractive && !isLocked) {
-            if (!openStandby(context)) {
-                StandbyLaunchNotifier.show(context)
-            }
-        } else {
-            StandbyLaunchNotifier.show(context)
-        }
+        // To launch over the lockscreen from the background, we must use a Full-Screen Intent notification.
+        StandbyLaunchNotifier.show(context)
     }
 
     fun openStandby(context: Context): Boolean {
@@ -137,5 +127,24 @@ object StandbyModeController {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
+    }
+
+    fun canUseFullScreenIntent(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
+            notificationManager?.canUseFullScreenIntent() == true
+        } else {
+            true // Auto-granted before Android 14
+        }
+    }
+
+    fun openFullScreenIntentSettings(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                data = android.net.Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        }
     }
 }
