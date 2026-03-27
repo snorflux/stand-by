@@ -11,6 +11,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
+import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.Display
 import android.view.Surface
@@ -40,7 +41,7 @@ object StandbyModeController {
 
         val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-        
+
         val isLocked = keyguardManager.isKeyguardLocked
         val isInteractive = powerManager.isInteractive
 
@@ -48,6 +49,11 @@ object StandbyModeController {
         // we should NEVER interrupt them or spam notifications, even if they are in our app.
         // Standby is strictly for when the device is idle/locked.
         if (isInteractive && !isLocked) {
+            return
+        }
+
+        // Don't relaunch standby over incoming/ongoing calls.
+        if (isCallActive(context)) {
             return
         }
 
@@ -146,5 +152,10 @@ object StandbyModeController {
             }
             context.startActivity(intent)
         }
+    }
+
+    private fun isCallActive(context: Context): Boolean {
+        val telephonyManager = context.getSystemService(TelephonyManager::class.java) ?: return false
+        return telephonyManager.callState != TelephonyManager.CALL_STATE_IDLE
     }
 }

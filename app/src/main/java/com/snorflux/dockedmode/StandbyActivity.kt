@@ -85,6 +85,7 @@ import com.snorflux.dockedmode.notifications.NotificationFeed
 import com.snorflux.dockedmode.notifications.StandbyNotificationListenerService
 import com.snorflux.dockedmode.settings.StandbyPreferences
 import com.snorflux.dockedmode.settings.StandbyUiSettings
+import com.snorflux.dockedmode.standby.StandbyLaunchNotifier
 import com.snorflux.dockedmode.standby.StandbyModeController
 import com.snorflux.dockedmode.ui.theme.DockedModeTheme
 import kotlinx.coroutines.delay
@@ -171,6 +172,7 @@ class StandbyActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        StandbyLaunchNotifier.cancel(this)
         StandbyModeController.isStandbyActive = true
         registerModeReceiver()
         if (!StandbyModeController.isReadyForManualLaunch(this)) {

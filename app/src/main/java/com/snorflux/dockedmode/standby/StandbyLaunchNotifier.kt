@@ -15,6 +15,11 @@ object StandbyLaunchNotifier {
     private const val CHANNEL_NAME = "Standby Launch"
     private const val NOTIFICATION_ID = 1102
 
+    fun cancel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        manager.cancel(NOTIFICATION_ID)
+    }
+
     fun show(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         ensureChannel(manager)
